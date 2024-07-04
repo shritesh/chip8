@@ -128,6 +128,9 @@ impl Emulator {
                 }
             }
 
+            let key_pressed = self.window.get_keys();
+            let key_released = self.window.get_keys_released();
+
             // run a bunch of cycles
             for _cycles in 0..100 {
                 let bits = self.mem[self.pc as usize..(self.pc + 2) as usize].view_bits::<Msb0>();
@@ -140,9 +143,6 @@ impl Emulator {
                 let address = bits[4..].load_be::<u16>();
 
                 self.pc += 2;
-
-                let key_pressed = self.window.get_keys();
-                let key_released = self.window.get_keys_released();
 
                 match (op, value, n) {
                     (0, 0xE0, _) => {
