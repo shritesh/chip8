@@ -131,8 +131,10 @@ impl Emulator {
             let key_pressed = self.window.get_keys();
             let key_released = self.window.get_keys_released();
 
-            // run a bunch of cycles
-            for _cycles in 0..100 {
+            let mut redraw = false;
+
+            // 700 op/s = ~12 op/frame
+            for _cycles in 0..12 {
                 let bits = self.mem[self.pc as usize..(self.pc + 2) as usize].view_bits::<Msb0>();
 
                 let op = bits[0..4].load_be::<u8>();
@@ -148,8 +150,7 @@ impl Emulator {
                     (0, 0xE0, _) => {
                         // clear
                         self.screen.fill(0);
-                        self.blit_and_update()?;
-                        break;
+                        redraw = true;
                     }
                     (0, 0xEE, _) => {
                         // pop
@@ -292,8 +293,7 @@ impl Emulator {
                                 }
                             }
                         }
-                        self.blit_and_update()?;
-                        break;
+                        redraw = true;
                     }
                     (0xE, 0x9E, _) => {
                         // skip if x is pressed
@@ -368,21 +368,17 @@ impl Emulator {
                 };
             }
 
-            self.window.update();
-        }
-
-        Ok(())
-    }
-
-    // emulate vsync behavior
-    // do not call self.window.update() after this
-    fn blit_and_update(&mut self) -> Result<(), Box<dyn Error>> {
-        for (y, row) in self.screen.iter().enumerate() {
-            for (x, col) in row.view_bits::<Msb0>().iter().enumerate() {
-                self.fb[y * WIDTH + x] = if *col { 0xFFFFFFFF } else { 0 };
+            if redraw {
+                for (y, row) in self.screen.iter().enumerate() {
+                    for (x, col) in row.view_bits::<Msb0>().iter().enumerate() {
+                        self.fb[y * WIDTH + x] = if *col { 0xFFFFFFFF } else { 0 };
+                    }
+                }
+                self.window.update_with_buffer(&self.fb, WIDTH, HEIGHT)?;
+            } else {
+                self.window.update();
             }
         }
-        self.window.update_with_buffer(&self.fb, WIDTH, HEIGHT)?;
 
         Ok(())
     }
